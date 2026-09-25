@@ -1,0 +1,1 @@
+"""Vault Desktop Launcher Module."""

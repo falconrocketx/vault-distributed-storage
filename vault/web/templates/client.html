@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vault - Client Storage Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#1e1b4b' },
+            slate: { 850: '#151f30', 950: '#0a0f1d' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .animate-pulse-slow { animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Navbar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i class="fa-solid fa-cube text-white text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-indigo-100 to-indigo-400 bg-clip-text text-transparent">Vault</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-medium">Model A</span>
+          </div>
+          <p class="text-xs text-slate-400">Resilient Distributed Object Storage</p>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Header -->
+      <div class="flex items-center gap-4">
+        <div class="hidden md:flex items-center gap-6 px-4 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-xs text-slate-300">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Cluster Status: <strong id="header-cluster-status" class="text-emerald-400">HEALTHY</strong></span>
+          </div>
+          <div class="h-3 w-px bg-slate-700"></div>
+          <div>Nodes: <strong id="header-nodes-count" class="text-indigo-300">0/0</strong></div>
+          <div class="h-3 w-px bg-slate-700"></div>
+          <div>Storage Used: <strong id="header-storage-used" class="text-slate-100">0 B</strong></div>
+        </div>
+
+        <a href="/admin" target="_blank" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 transition shadow-sm">
+          <i class="fa-solid fa-gauge-high"></i>
+          <span>Admin & Chaos Console</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- Upload Hero Card -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 shadow-2xl p-6 sm:p-8">
+      <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <span>Storage Bucket</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+              Quorum Protected
+            </span>
+          </h1>
+          <p class="text-sm text-slate-400 mt-1">Upload, stream, inspect, and manage multi-replica distributed objects.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="refreshFileList()" class="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 transition">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Refresh</span>
+          </button>
+          <label for="file-upload-input" class="cursor-pointer flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 transition">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Upload Object</span>
+          </label>
+          <input type="file" id="file-upload-input" class="hidden" onchange="handleFileSelected(this.files)">
+        </div>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div id="drop-zone" class="mt-6 border-2 border-dashed border-slate-700/80 hover:border-indigo-500/80 rounded-xl p-8 text-center transition bg-slate-850/40 hover:bg-indigo-950/10 cursor-pointer">
+        <div class="flex flex-col items-center justify-center space-y-3">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-600/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400 text-2xl">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-200">Drag and drop files here, or <span class="text-indigo-400 font-semibold underline decoration-indigo-400/50">browse</span></p>
+            <p class="text-xs text-slate-500 mt-1">Auto-splits into 1MB chunks and replicates across quorum nodes ($W = \lfloor R/2 \rfloor + 1$)</p>
+          </div>
+        </div>
+
+        <!-- Upload Progress Area -->
+        <div id="upload-progress-container" class="mt-6 max-w-md mx-auto hidden text-left">
+          <div class="flex justify-between text-xs mb-1">
+            <span id="upload-filename" class="font-medium text-indigo-300 truncate max-w-xs">Uploading...</span>
+            <span id="upload-pct" class="text-slate-400 font-mono">0%</span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div id="upload-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-200" style="width: 0%"></div>
+          </div>
+          <p id="upload-status-text" class="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-notch fa-spin text-indigo-400"></i>
+            <span>Distributing chunks across storage daemons...</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Objects List Section -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="px-6 py-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <h2 class="text-base font-semibold text-white">Stored Objects</h2>
+          <span id="files-badge-count" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-mono">0 items</span>
+        </div>
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
+          <input type="text" id="file-search-input" oninput="filterFiles()" placeholder="Search objects..." class="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-4 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition w-full sm:w-64">
+        </div>
+      </div>
+
+      <!-- File Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-800/80 bg-slate-950/50 text-slate-400 font-semibold tracking-wider uppercase text-[11px]">
+              <th class="py-3.5 px-6">Name</th>
+              <th class="py-3.5 px-4">Version</th>
+              <th class="py-3.5 px-4">Size</th>
+              <th class="py-3.5 px-4">ETag (OCC)</th>
+              <th class="py-3.5 px-4">Last Modified</th>
+              <th class="py-3.5 px-4">Status</th>
+              <th class="py-3.5 px-6 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="files-table-body" class="divide-y divide-slate-800/50 text-slate-300">
+            <tr>
+              <td colspan="7" class="py-12 text-center text-slate-500">
+                <i class="fa-solid fa-box-open text-3xl mb-3 text-slate-600 block"></i>
+                <span>No objects stored in cluster yet. Upload a file above to begin.</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Object Inspector Modal -->
+  <div id="inspector-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-850">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <i class="fa-solid fa-microchip"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm" id="modal-filename">Object Inspector</h3>
+            <p class="text-xs text-slate-400" id="modal-fileid">ID: ...</p>
+          </div>
+        </div>
+        <button onclick="closeInspectorModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-6 text-xs flex-1">
+        
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+            <div class="text-slate-500 text-[10px] uppercase font-bold">Version</div>
+            <div class="text-sm font-semibold text-indigo-300 mt-1" id="modal-version">v1</div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+            <div class="text-slate-500 text-[10px] uppercase font-bold">Total Size</div>
+            <div class="text-sm font-semibold text-slate-200 mt-1" id="modal-size">0 B</div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 col-span-2">
+            <div class="text-slate-500 text-[10px] uppercase font-bold">ETag (MD5)</div>
+            <div class="text-xs font-mono text-emerald-400 mt-1 truncate" id="modal-etag">-</div>
+          </div>
+        </div>
+
+        <!-- Chunks & Replicas Map -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-semibold text-white uppercase text-[11px] tracking-wider">Distributed Chunk Map & Node Replicas</h4>
+            <span class="text-slate-400" id="modal-chunks-count">0 Chunks</span>
+          </div>
+
+          <div id="modal-chunks-container" class="space-y-3">
+            <!-- Dynamic Chunks -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 border-t border-slate-800 bg-slate-950/50 flex justify-end gap-3">
+        <button onclick="closeInspectorModal()" class="px-4 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    let filesList = [];
+
+    // Notifications
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colors = {
+        info: 'bg-indigo-900/90 border-indigo-500 text-indigo-100',
+        success: 'bg-emerald-900/90 border-emerald-500 text-emerald-100',
+        error: 'bg-rose-900/90 border-rose-500 text-rose-100',
+        warning: 'bg-amber-900/90 border-amber-500 text-amber-100'
+      };
+      toast.className = `px-4 py-3 rounded-xl border shadow-xl text-xs flex items-center gap-2 pointer-events-auto transition duration-300 ${colors[type] || colors.info}`;
+      toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Formatters
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatDate(isoStr) {
+      if (!isoStr) return '-';
+      const d = new Date(isoStr);
+      return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    // Fetch files
+    async function refreshFileList() {
+      try {
+        const resp = await fetch('/api/files');
+        if (!resp.ok) throw new Error('Failed to fetch files');
+        filesList = await resp.json();
+        renderFilesTable(filesList);
+        updateHeaderTelemetry();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function updateHeaderTelemetry() {
+      try {
+        const resp = await fetch('/api/telemetry');
+        if (resp.ok) {
+          const data = await resp.json();
+          document.getElementById('header-nodes-count').innerText = `${data.online_nodes}/${data.total_nodes}`;
+          document.getElementById('header-storage-used').innerText = formatBytes(data.unique_data_bytes);
+          const statusElem = document.getElementById('header-cluster-status');
+          if (data.online_nodes === 0) {
+            statusElem.innerText = 'OFFLINE';
+            statusElem.className = 'text-rose-400 font-bold';
+          } else if (data.online_nodes < data.total_nodes) {
+            statusElem.innerText = 'DEGRADED';
+            statusElem.className = 'text-amber-400 font-bold';
+          } else {
+            statusElem.innerText = 'HEALTHY';
+            statusElem.className = 'text-emerald-400 font-bold';
+          }
+        }
+      } catch (e) {}
+    }
+
+    function renderFilesTable(files) {
+      const tbody = document.getElementById('files-table-body');
+      document.getElementById('files-badge-count').innerText = `${files.length} items`;
+
+      if (files.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-12 text-center text-slate-500">
+              <i class="fa-solid fa-box-open text-3xl mb-3 text-slate-600 block"></i>
+              <span>No objects stored in cluster yet. Upload a file above to begin.</span>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = files.map(f => `
+        <tr class="hover:bg-slate-850/60 transition group">
+          <td class="py-3.5 px-6 font-medium text-white flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
+              <i class="fa-regular fa-file"></i>
+            </div>
+            <span class="truncate max-w-[200px] sm:max-w-xs font-semibold">${f.filename}</span>
+          </td>
+          <td class="py-3.5 px-4 font-mono">
+            <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-medium">v${f.version}</span>
+          </td>
+          <td class="py-3.5 px-4 font-mono text-slate-400">${formatBytes(f.size_bytes)}</td>
+          <td class="py-3.5 px-4 font-mono text-slate-400 truncate max-w-[120px]" title="${f.etag}">
+            "${f.etag ? f.etag.substring(0, 10) + '...' : '-'}"
+          </td>
+          <td class="py-3.5 px-4 text-slate-400">${formatDate(f.created_at)}</td>
+          <td class="py-3.5 px-4">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+              f.status === 'AVAILABLE' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
+              f.status === 'HEALING' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
+              'bg-slate-700 text-slate-400'
+            }">${f.status}</span>
+          </td>
+          <td class="py-3.5 px-6 text-right space-x-1 whitespace-nowrap">
+            <button onclick="inspectFile('${f.file_id}')" title="Inspect Chunks & Replicas" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition">
+              <i class="fa-solid fa-circle-nodes"></i>
+            </button>
+            <a href="/api/files/${f.file_id}/download" download="${f.filename}" title="Download Object" class="inline-block p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition">
+              <i class="fa-solid fa-download"></i>
+            </a>
+            <button onclick="deleteFile('${f.file_id}', '${f.filename}')" title="Delete Object" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition">
+              <i class="fa-regular fa-trash-can"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterFiles() {
+      const q = document.getElementById('file-search-input').value.toLowerCase();
+      const filtered = filesList.filter(f => f.filename.toLowerCase().includes(q) || f.file_id.toLowerCase().includes(q));
+      renderFilesTable(filtered);
+    }
+
+    // Inspect Modal
+    async function inspectFile(fileId) {
+      try {
+        const resp = await fetch(`/api/files/${fileId}/inspect`);
+        if (!resp.ok) throw new Error('Failed to load file details');
+        const data = await resp.json();
+
+        document.getElementById('modal-filename').innerText = data.file.filename;
+        document.getElementById('modal-fileid').innerText = `File ID: ${data.file.file_id}`;
+        document.getElementById('modal-version').innerText = `v${data.file.version}`;
+        document.getElementById('modal-size').innerText = formatBytes(data.file.size_bytes);
+        document.getElementById('modal-etag').innerText = `"${data.file.etag}"`;
+        document.getElementById('modal-chunks-count').innerText = `${data.chunks.length} Chunk(s)`;
+
+        const container = document.getElementById('modal-chunks-container');
+        container.innerHTML = data.chunks.map(chunk => `
+          <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3.5 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-5 h-5 rounded bg-indigo-500/20 text-indigo-400 font-mono font-bold flex items-center justify-center text-[10px]">#${chunk.chunk_index}</span>
+                <span class="font-mono text-slate-300 font-semibold">${chunk.chunk_id}</span>
+              </div>
+              <span class="font-mono text-slate-400">${formatBytes(chunk.size_bytes)}</span>
+            </div>
+            <div class="font-mono text-[10px] text-slate-500 break-all">
+              SHA-256: <span class="text-slate-400">${chunk.checksum_sha256}</span>
+            </div>
+            
+            <div class="pt-2 border-t border-slate-900 flex flex-wrap items-center gap-2">
+              <span class="text-[10px] text-slate-400 uppercase font-semibold">Replicas:</span>
+              ${chunk.replicas.map(rep => `
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-mono ${
+                  rep.status === 'HEALTHY' && rep.node_status === 'ONLINE'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : rep.status === 'CORRUPTED'
+                    ? 'bg-rose-500/15 border-rose-500/40 text-rose-300'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                }">
+                  <span class="w-2 h-2 rounded-full ${rep.node_status === 'ONLINE' ? 'bg-emerald-400' : 'bg-rose-500'}"></span>
+                  <span>Node ${rep.node_id} (Port ${rep.port || '?'})</span>
+                  <span class="font-bold text-[9px] uppercase px-1 rounded bg-black/30">${rep.status}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('inspector-modal').classList.remove('hidden');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function closeInspectorModal() {
+      document.getElementById('inspector-modal').classList.add('hidden');
+    }
+
+    async function deleteFile(fileId, filename) {
+      if (!confirm(`Are you sure you want to delete '${filename}'?`)) return;
+      try {
+        const resp = await fetch(`/api/files/${fileId}`, { method: 'DELETE' });
+        if (!resp.ok) throw new Error('Delete failed');
+        showToast(`'${filename}' deleted successfully`, 'success');
+        refreshFileList();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // Upload logic
+    async function handleFileSelected(files) {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const progressContainer = document.getElementById('upload-progress-container');
+      const progressBar = document.getElementById('upload-progress-bar');
+      const pctText = document.getElementById('upload-pct');
+      const filenameText = document.getElementById('upload-filename');
+      const statusText = document.getElementById('upload-status-text');
+
+      progressContainer.classList.remove('hidden');
+      filenameText.innerText = file.name;
+      progressBar.style.width = '20%';
+      pctText.innerText = '20%';
+      statusText.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-indigo-400"></i> Chunking and distributing across quorum nodes...';
+
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/files/upload', true);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 90);
+            progressBar.style.width = `${pct}%`;
+            pctText.innerText = `${pct}%`;
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            progressBar.style.width = '100%';
+            pctText.innerText = '100%';
+            statusText.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Quorum write acknowledged!';
+            showToast(`'${file.name}' stored with Quorum consensus!`, 'success');
+            setTimeout(() => {
+              progressContainer.classList.add('hidden');
+              refreshFileList();
+            }, 1200);
+          } else {
+            let msg = 'Upload failed';
+            try { msg = JSON.parse(xhr.responseText).detail || msg; } catch (e) {}
+            showToast(msg, 'error');
+            progressContainer.classList.add('hidden');
+          }
+        };
+
+        xhr.onerror = () => {
+          showToast('Network error during upload', 'error');
+          progressContainer.classList.add('hidden');
+        };
+
+        xhr.send(formData);
+      } catch (err) {
+        showToast(err.message, 'error');
+        progressContainer.classList.add('hidden');
+      }
+    }
+
+    // Drag and drop listeners
+    const dropZone = document.getElementById('drop-zone');
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-950/20');
+      }, false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+      }, false);
+    });
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      handleFileSelected(files);
+    }, false);
+    dropZone.addEventListener('click', () => {
+      document.getElementById('file-upload-input').click();
+    });
+
+    // Auto refresh
+    refreshFileList();
+    setInterval(updateHeaderTelemetry, 3000);
+  </script>
+</body>
+</html>
