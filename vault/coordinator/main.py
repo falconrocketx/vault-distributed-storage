@@ -1,13 +1,13 @@
 import os
 import io
+import logging
 import asyncio
 from pathlib import Path
 from typing import Optional, List
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException, status, Query
-from fastapi.responses import HTMLResponse, Response, StreamingResponse, RedirectResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException, status, Query, Request, Depends
+from fastapi.responses import HTMLResponse, Response, StreamingResponse, JSONResponse
 from pydantic import BaseModel
 import httpx
 
@@ -17,13 +17,18 @@ from vault.config import (
     DEFAULT_NODE_COUNT,
     BASE_NODE_PORT,
     DEFAULT_REPLICATION_FACTOR,
-    PROJECT_ROOT
+    PROJECT_ROOT,
+    MAX_UPLOAD_SIZE_BYTES
 )
+from vault.utils import sanitize_filename
 from vault.coordinator.metadata import MetadataDB
 from vault.coordinator.event_bus import coordinator_event_bus
 from vault.coordinator.detector import FailureDetector
 from vault.coordinator.quorum import QuorumEngine, QuorumWriteError, QuorumReadError, OCCConflictError
 from vault.coordinator.scrubber import ScrubberDaemon
+from vault.coordinator.security import verify_admin_auth
+
+logger = logging.getLogger("vault.coordinator")
 
 db = MetadataDB(METADATA_DB_PATH)
 quorum_engine = QuorumEngine(db=db, event_bus=coordinator_event_bus, chunk_size=DEFAULT_CHUNK_SIZE)
@@ -59,10 +64,30 @@ app = FastAPI(title="Vault Central Coordinator", version="1.0.0", lifespan=lifes
 
 TEMPLATES_DIR = PROJECT_ROOT / "vault" / "web" / "templates"
 
+# HTTP Security Headers Middleware
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self' 'unsafe-inline' https: cdn.tailwindcss.com cdnjs.cloudflare.com; "
+        "img-src 'self' data: https:; font-src 'self' https: cdnjs.cloudflare.com; connect-src 'self' ws: wss:;"
+    )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    return response
+
 # Web Portals
-@app.get("/", include_in_schema=False)
-async def root():
-    return RedirectResponse(url="/client")
+@app.get("/", response_class=HTMLResponse)
+async def root_hub():
+    """Accessible navigation hub directing users to Client Portal and Admin Console."""
+    template_path = TEMPLATES_DIR / "index.html"
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail="Hub template not found")
+    with open(template_path, "r", encoding="utf-8") as f:
+        return f.read()
 
 @app.get("/client", response_class=HTMLResponse)
 async def client_portal():
@@ -73,7 +98,7 @@ async def client_portal():
         return f.read()
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_portal():
+async def admin_portal(admin_user: str = Depends(verify_admin_auth)):
     template_path = TEMPLATES_DIR / "admin.html"
     if not template_path.exists():
         raise HTTPException(status_code=404, detail="Admin template not found")
@@ -109,7 +134,7 @@ async def get_telemetry():
                     n["disk_used_bytes"] = data.get("disk_used_bytes", 0)
                     n["chunks_count"] = data.get("chunks_count", 0)
                     n["delay_ms"] = data.get("delay_ms", 0)
-            except Exception:
+            except httpx.RequestError:
                 n["disk_used_bytes"] = 0
                 n["chunks_count"] = 0
 
@@ -123,15 +148,44 @@ async def list_files():
 
 @app.post("/api/files/upload")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     if_match: Optional[str] = Header(None, alias="If-Match"),
     replication_factor: Optional[int] = Form(None)
 ):
+    # Enforce maximum upload size to protect against DoS memory exhaustion
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Payload Too Large: File exceeds maximum allowed size of {MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)} MB"
+        )
+
+    # Read chunks safely while tracking total bytes
+    buffer = io.BytesIO()
+    total_read = 0
+    chunk_size = 64 * 1024
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_read += len(chunk)
+        if total_read > MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Payload Too Large: File exceeds maximum allowed size of {MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)} MB"
+            )
+        buffer.write(chunk)
+
+    content = buffer.getvalue()
+
+    # Sanitize untrusted filename to prevent path traversal and script injection
+    safe_filename = sanitize_filename(file.filename)
+
     try:
-        content = await file.read()
         r_factor = replication_factor or scrubber_daemon.target_r
         record = await quorum_engine.write_file(
-            filename=file.filename,
+            filename=safe_filename,
             data=content,
             replication_factor=r_factor,
             if_match=if_match
@@ -151,12 +205,12 @@ async def download_file(file_id: str):
             file_id=file_id,
             auto_repair_callback=scrubber_daemon.repair_chunk
         )
-        filename = record.get("filename", "download.bin")
+        safe_filename = sanitize_filename(record.get("filename", "download.bin"))
         return Response(
             content=data,
             media_type="application/octet-stream",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
                 "ETag": f'"{record.get("etag", "")}"',
                 "Content-Length": str(len(data))
             }
@@ -181,8 +235,8 @@ async def delete_file(file_id: str):
                 if node:
                     try:
                         await client.delete(f"{node['url'].rstrip('/')}/chunks/{c['chunk_id']}", timeout=2.0)
-                    except Exception:
-                        pass
+                    except httpx.RequestError as exc:
+                        logger.debug("Failed to delete chunk replica on node %s: %s", r["node_id"], exc)
 
     db.delete_file(file_id)
     await coordinator_event_bus.publish(
@@ -214,12 +268,12 @@ async def inspect_file(file_id: str):
         "chunks": chunk_details
     }
 
-# Chaos Simulator APIs
+# Chaos Simulator APIs - Protected by HTTP Basic Authentication
 class KillNodePayload(BaseModel):
     node_id: int
 
 @app.post("/api/chaos/kill_node")
-async def chaos_kill_node(payload: KillNodePayload):
+async def chaos_kill_node(payload: KillNodePayload, admin_user: str = Depends(verify_admin_auth)):
     node = db.get_node(payload.node_id)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -227,18 +281,18 @@ async def chaos_kill_node(payload: KillNodePayload):
     async with httpx.AsyncClient() as client:
         try:
             await client.post(f"{node['url'].rstrip('/')}/debug/freeze", timeout=2.0)
-        except Exception:
-            pass
+        except httpx.RequestError as exc:
+            logger.debug("Node freeze request error: %s", exc)
 
     await coordinator_event_bus.publish(
         "WARN",
-        f"Chaos Trigger: Sent freeze/kill signal to Node {payload.node_id}.",
-        {"node_id": payload.node_id}
+        f"Chaos Trigger by [{admin_user}]: Sent freeze/kill signal to Node {payload.node_id}.",
+        {"node_id": payload.node_id, "admin": admin_user}
     )
     return {"status": "killed", "node_id": payload.node_id}
 
 @app.post("/api/chaos/revive_node")
-async def chaos_revive_node(payload: KillNodePayload):
+async def chaos_revive_node(payload: KillNodePayload, admin_user: str = Depends(verify_admin_auth)):
     node = db.get_node(payload.node_id)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -246,14 +300,14 @@ async def chaos_revive_node(payload: KillNodePayload):
     async with httpx.AsyncClient() as client:
         try:
             await client.post(f"{node['url'].rstrip('/')}/debug/unfreeze", timeout=2.0)
-        except Exception:
-            pass
+        except httpx.RequestError as exc:
+            logger.debug("Node unfreeze request error: %s", exc)
 
     db.update_node_heartbeat(payload.node_id, status="ONLINE", consecutive_failures=0, delay_ms=0)
     await coordinator_event_bus.publish(
         "INFO",
-        f"Chaos Trigger: Revived Node {payload.node_id}.",
-        {"node_id": payload.node_id}
+        f"Chaos Trigger by [{admin_user}]: Revived Node {payload.node_id}.",
+        {"node_id": payload.node_id, "admin": admin_user}
     )
     return {"status": "revived", "node_id": payload.node_id}
 
@@ -262,7 +316,7 @@ class CorruptChunkPayload(BaseModel):
     chunk_id: Optional[str] = None
 
 @app.post("/api/chaos/corrupt_chunk")
-async def chaos_corrupt_chunk(payload: CorruptChunkPayload):
+async def chaos_corrupt_chunk(payload: CorruptChunkPayload, admin_user: str = Depends(verify_admin_auth)):
     node = db.get_node(payload.node_id)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -280,7 +334,7 @@ async def chaos_corrupt_chunk(payload: CorruptChunkPayload):
                 db.update_replica_status(cid, payload.node_id, "CORRUPTED")
                 await coordinator_event_bus.publish(
                     "ALERT",
-                    f"Chaos Trigger: Injected silent bit-rot into chunk '{cid}' on Node {payload.node_id} (Byte {result.get('byte_offset')}).",
+                    f"Chaos Trigger by [{admin_user}]: Injected silent bit-rot into chunk '{cid}' on Node {payload.node_id} (Byte {result.get('byte_offset')}).",
                     result
                 )
                 return result
@@ -295,7 +349,7 @@ class PartitionPayload(BaseModel):
     delay_ms: int = 3000
 
 @app.post("/api/chaos/partition_node")
-async def chaos_partition_node(payload: PartitionPayload):
+async def chaos_partition_node(payload: PartitionPayload, admin_user: str = Depends(verify_admin_auth)):
     node = db.get_node(payload.node_id)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -307,19 +361,19 @@ async def chaos_partition_node(payload: PartitionPayload):
                 json={"delay_ms": payload.delay_ms},
                 timeout=2.0
             )
-        except Exception:
-            pass
+        except httpx.RequestError as exc:
+            logger.debug("Partition injection error: %s", exc)
 
     db.update_node_heartbeat(payload.node_id, status="ONLINE", consecutive_failures=0, delay_ms=payload.delay_ms)
     await coordinator_event_bus.publish(
         "WARN",
-        f"Chaos Trigger: Injected +{payload.delay_ms}ms latency partition on Node {payload.node_id}.",
-        {"node_id": payload.node_id, "delay_ms": payload.delay_ms}
+        f"Chaos Trigger by [{admin_user}]: Injected +{payload.delay_ms}ms latency partition on Node {payload.node_id}.",
+        {"node_id": payload.node_id, "delay_ms": payload.delay_ms, "admin": admin_user}
     )
     return {"status": "partitioned", "node_id": payload.node_id, "delay_ms": payload.delay_ms}
 
 @app.post("/api/chaos/clear_latency")
-async def chaos_clear_latency(payload: KillNodePayload):
+async def chaos_clear_latency(payload: KillNodePayload, admin_user: str = Depends(verify_admin_auth)):
     node = db.get_node(payload.node_id)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -327,14 +381,14 @@ async def chaos_clear_latency(payload: KillNodePayload):
     async with httpx.AsyncClient() as client:
         try:
             await client.post(f"{node['url'].rstrip('/')}/debug/clear_delay", timeout=2.0)
-        except Exception:
-            pass
+        except httpx.RequestError as exc:
+            logger.debug("Clear latency request error: %s", exc)
 
     db.update_node_heartbeat(payload.node_id, status="ONLINE", consecutive_failures=0, delay_ms=0)
     await coordinator_event_bus.publish(
         "INFO",
-        f"Chaos Trigger: Cleared artificial delays on Node {payload.node_id}.",
-        {"node_id": payload.node_id}
+        f"Chaos Trigger by [{admin_user}]: Cleared artificial delays on Node {payload.node_id}.",
+        {"node_id": payload.node_id, "admin": admin_user}
     )
     return {"status": "cleared", "node_id": payload.node_id}
 
@@ -343,20 +397,23 @@ class CollisionPayload(BaseModel):
     filename: str = "collision_stress_test.txt"
 
 @app.post("/api/chaos/collision")
-async def chaos_collision(payload: CollisionPayload):
+async def chaos_collision(payload: CollisionPayload, admin_user: str = Depends(verify_admin_auth)):
     """
     Fires N concurrent writes to the same object to test OCC and version resolution.
+    Protected by administrative authorization.
     """
+    safe_filename = sanitize_filename(payload.filename)
+
     await coordinator_event_bus.publish(
         "INFO",
-        f"Chaos Trigger: Launching {payload.count} concurrent collision writes to '{payload.filename}'."
+        f"Chaos Trigger by [{admin_user}]: Launching {payload.count} concurrent collision writes to '{safe_filename}'."
     )
 
     results = []
     async def worker(idx: int):
         data = f"Concurrent write payload index={idx} timestamp={os.urandom(8).hex()}".encode("utf-8")
         try:
-            rec = await quorum_engine.write_file(payload.filename, data, replication_factor=scrubber_daemon.target_r)
+            rec = await quorum_engine.write_file(safe_filename, data, replication_factor=scrubber_daemon.target_r)
             return {"index": idx, "success": True, "version": rec["version"]}
         except OCCConflictError as e:
             return {"index": idx, "success": False, "conflict": True, "error": str(e)}
@@ -372,7 +429,7 @@ async def chaos_collision(payload: CollisionPayload):
     await coordinator_event_bus.publish(
         "INFO",
         f"Concurrency stress test finished: {len(successful)} versions committed, {len(conflicts)} OCC conflicts handled.",
-        {"total": payload.count, "committed": len(successful), "conflicts": len(conflicts)}
+        {"total": payload.count, "committed": len(successful), "conflicts": len(conflicts), "admin": admin_user}
     )
 
     return {
@@ -384,6 +441,6 @@ async def chaos_collision(payload: CollisionPayload):
     }
 
 @app.post("/api/chaos/scrub")
-async def chaos_scrub():
+async def chaos_scrub(admin_user: str = Depends(verify_admin_auth)):
     result = await scrubber_daemon.scrub_all()
     return result

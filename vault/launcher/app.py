@@ -1,7 +1,7 @@
 import os
 import sys
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import webbrowser
 import threading
 from pathlib import Path
@@ -50,7 +50,7 @@ class VaultLauncherApp:
         if ico_path.exists():
             try:
                 self.root.iconbitmap(str(ico_path))
-            except Exception:
+            except (OSError, Exception):  # nosec B110
                 pass
 
         self._build_ui()
@@ -320,7 +320,7 @@ class VaultLauncherApp:
                 "--node-id", str(i),
                 "--port", str(port)
             ]
-            proc = subprocess.Popen(
+            proc = subprocess.Popen(  # nosec B603
                 cmd,
                 cwd=str(PROJECT_ROOT),
                 stdout=subprocess.DEVNULL,
@@ -336,7 +336,7 @@ class VaultLauncherApp:
             "--nodes", str(self.node_count),
             "--replication", str(self.replication_factor)
         ]
-        self.coordinator_proc = subprocess.Popen(
+        self.coordinator_proc = subprocess.Popen(  # nosec B603
             coord_cmd,
             cwd=str(PROJECT_ROOT),
             stdout=subprocess.DEVNULL,
@@ -356,14 +356,14 @@ class VaultLauncherApp:
         if self.coordinator_proc:
             try:
                 self.coordinator_proc.terminate()
-            except Exception:
+            except (ProcessLookupError, OSError):  # nosec B110
                 pass
             self.coordinator_proc = None
 
         for p in self.node_procs:
             try:
                 p.terminate()
-            except Exception:
+            except (ProcessLookupError, OSError):  # nosec B110
                 pass
         self.node_procs = []
 

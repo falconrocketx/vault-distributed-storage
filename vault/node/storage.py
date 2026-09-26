@@ -1,9 +1,9 @@
 import os
 import json
-import random
+import secrets
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, List
-from vault.utils import compute_sha256
+from vault.utils import compute_sha256, validate_safe_path, sanitize_id
 
 class ChecksumMismatchError(Exception):
     def __init__(self, chunk_id: str, expected: str, actual: str):
@@ -27,10 +27,14 @@ class NodeStorageManager:
         self.meta_dir.mkdir(parents=True, exist_ok=True)
 
     def _chunk_path(self, chunk_id: str) -> Path:
-        return self.chunks_dir / f"{chunk_id}.bin"
+        clean_id = sanitize_id(chunk_id)
+        p = self.chunks_dir / f"{clean_id}.bin"
+        return validate_safe_path(p, self.chunks_dir)
 
     def _meta_path(self, chunk_id: str) -> Path:
-        return self.meta_dir / f"{chunk_id}.json"
+        clean_id = sanitize_id(chunk_id)
+        p = self.meta_dir / f"{clean_id}.json"
+        return validate_safe_path(p, self.meta_dir)
 
     def write_chunk(self, chunk_id: str, data: bytes, expected_checksum: Optional[str] = None) -> Dict[str, Any]:
         """Writes binary chunk to disk and saves its SHA-256 checksum."""
@@ -86,8 +90,8 @@ class NodeStorageManager:
                 with open(meta_path, "r", encoding="utf-8") as f:
                     meta = json.load(f)
                     expected_sha = meta.get("checksum_sha256", actual_sha)
-            except Exception:
-                pass
+            except (json.JSONDecodeError, OSError):
+                expected_sha = actual_sha
 
         if actual_sha != expected_sha:
             raise ChecksumMismatchError(chunk_id, expected_sha, actual_sha)
@@ -123,7 +127,7 @@ class NodeStorageManager:
             chunks = self.list_chunks()
             if not chunks:
                 raise FileNotFoundError("No chunks available on this node to corrupt")
-            chunk_id = random.choice(chunks)
+            chunk_id = secrets.choice(chunks)
 
         chunk_path = self._chunk_path(chunk_id)
         if not chunk_path.exists():
@@ -138,7 +142,7 @@ class NodeStorageManager:
             original_val = 0
             corrupted_val = 0xAA
         else:
-            offset = random.randint(0, len(data) - 1)
+            offset = secrets.randbelow(len(data))
             original_val = data[offset]
             # Flip bits with XOR
             corrupted_val = original_val ^ 0xFF
@@ -161,9 +165,12 @@ class NodeStorageManager:
         chunks = self.list_chunks()
         total_bytes = 0
         for cid in chunks:
-            p = self._chunk_path(cid)
-            if p.exists():
-                total_bytes += p.stat().st_size
+            try:
+                p = self._chunk_path(cid)
+                if p.exists():
+                    total_bytes += p.stat().st_size
+            except ValueError:
+                continue
 
         return {
             "node_id": self.node_id,

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-slate-950">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Vault Client Storage Portal - Accessible, resilient distributed cloud storage with multi-node replication and quorum protection.">
   <title>Vault - Client Storage Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -13,173 +14,180 @@
         extend: {
           colors: {
             brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#1e1b4b' },
-            slate: { 850: '#151f30', 950: '#0a0f1d' }
+            slate: { 850: '#141d2e', 950: '#070b14' }
           }
         }
       }
     }
   </script>
-  <style>
-    @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .animate-pulse-slow { animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+<body class="h-full bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
 
-  <!-- Navbar -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+  <!-- Accessible Skip to Content Link -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:font-semibold focus:rounded-lg focus:shadow-2xl focus:outline-none focus:ring-2 focus:ring-white">
+    Skip to main content
+  </a>
+
+  <!-- Header -->
+  <header role="banner" class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <i class="fa-solid fa-cube text-white text-lg"></i>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-indigo-100 to-indigo-400 bg-clip-text text-transparent">Vault</span>
-            <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-medium">Model A</span>
+        <a href="/" class="flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-lg p-1" aria-label="Vault Home Hub">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25" aria-hidden="true">
+            <i class="fa-solid fa-cube text-white text-lg"></i>
           </div>
-          <p class="text-xs text-slate-400">Resilient Distributed Object Storage</p>
-        </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xl font-bold tracking-tight text-white">Vault</span>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-medium">Model A</span>
+            </div>
+            <p class="text-xs text-slate-300">Resilient Distributed Object Storage</p>
+          </div>
+        </a>
       </div>
 
-      <!-- Quick Metrics Header -->
+      <!-- Quick Metrics Header with ARIA Live Region -->
       <div class="flex items-center gap-4">
-        <div class="hidden md:flex items-center gap-6 px-4 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-xs text-slate-300">
+        <div class="hidden md:flex items-center gap-6 px-4 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200" aria-live="polite" role="status">
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Cluster Status: <strong id="header-cluster-status" class="text-emerald-400">HEALTHY</strong></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true"></span>
+            <span>Cluster Status: <strong id="header-cluster-status" class="text-emerald-400 font-bold">HEALTHY</strong></span>
           </div>
-          <div class="h-3 w-px bg-slate-700"></div>
-          <div>Nodes: <strong id="header-nodes-count" class="text-indigo-300">0/0</strong></div>
-          <div class="h-3 w-px bg-slate-700"></div>
-          <div>Storage Used: <strong id="header-storage-used" class="text-slate-100">0 B</strong></div>
+          <div class="h-3 w-px bg-slate-700" aria-hidden="true"></div>
+          <div>Nodes: <strong id="header-nodes-count" class="text-indigo-300 font-bold">0/0</strong></div>
+          <div class="h-3 w-px bg-slate-700" aria-hidden="true"></div>
+          <div>Storage Used: <strong id="header-storage-used" class="text-slate-100 font-bold">0 B</strong></div>
         </div>
 
-        <a href="/admin" target="_blank" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 transition shadow-sm">
-          <i class="fa-solid fa-gauge-high"></i>
-          <span>Admin & Chaos Console</span>
-        </a>
+        <nav aria-label="Quick Switch">
+          <a href="/admin" class="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600/25 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:ring-indigo-400" aria-label="Open Admin and Chaos Console">
+            <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
+            <span>Admin Console</span>
+          </a>
+        </nav>
       </div>
     </div>
   </header>
 
   <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+  <main id="main-content" role="main" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
     
-    <!-- Upload Hero Card -->
-    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 shadow-2xl p-6 sm:p-8">
-      <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+    <!-- Upload Section -->
+    <section aria-labelledby="upload-section-heading" class="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 shadow-2xl p-6 sm:p-8">
+      <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
 
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 id="upload-section-heading" class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
             <span>Storage Bucket</span>
-            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
               Quorum Protected
             </span>
           </h1>
-          <p class="text-sm text-slate-400 mt-1">Upload, stream, inspect, and manage multi-replica distributed objects.</p>
+          <p class="text-sm text-slate-300 mt-1">Upload, stream, inspect, and manage multi-replica distributed objects.</p>
         </div>
 
         <div class="flex items-center gap-3">
-          <button onclick="refreshFileList()" class="flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 transition">
-            <i class="fa-solid fa-arrows-rotate"></i>
+          <button type="button" onclick="refreshFileList()" class="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:ring-indigo-400" aria-label="Refresh object list">
+            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
             <span>Refresh</span>
           </button>
-          <label for="file-upload-input" class="cursor-pointer flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 transition">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
+          
+          <label for="file-upload-input" id="upload-button-label" class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-slate-950 focus-within:ring-indigo-400" tabindex="0" role="button" aria-controls="file-upload-input">
+            <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
             <span>Upload Object</span>
+            <input type="file" id="file-upload-input" class="sr-only" onchange="handleFileSelected(this.files)" aria-labelledby="upload-button-label">
           </label>
-          <input type="file" id="file-upload-input" class="hidden" onchange="handleFileSelected(this.files)">
         </div>
       </div>
 
       <!-- Drag & Drop Zone -->
-      <div id="drop-zone" class="mt-6 border-2 border-dashed border-slate-700/80 hover:border-indigo-500/80 rounded-xl p-8 text-center transition bg-slate-850/40 hover:bg-indigo-950/10 cursor-pointer">
-        <div class="flex flex-col items-center justify-center space-y-3">
-          <div class="w-14 h-14 rounded-2xl bg-indigo-600/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400 text-2xl">
+      <div id="drop-zone" tabindex="0" role="region" aria-label="File upload dropzone. Drag files here or press Enter to browse." class="mt-6 border-2 border-dashed border-slate-700 hover:border-indigo-400 rounded-xl p-8 text-center transition bg-slate-900/60 hover:bg-indigo-950/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:ring-indigo-400">
+        <div class="flex flex-col items-center justify-center space-y-3 pointer-events-none">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 text-2xl" aria-hidden="true">
             <i class="fa-solid fa-cloud-arrow-up"></i>
           </div>
           <div>
-            <p class="text-sm font-medium text-slate-200">Drag and drop files here, or <span class="text-indigo-400 font-semibold underline decoration-indigo-400/50">browse</span></p>
-            <p class="text-xs text-slate-500 mt-1">Auto-splits into 1MB chunks and replicates across quorum nodes ($W = \lfloor R/2 \rfloor + 1$)</p>
+            <p class="text-sm font-semibold text-slate-100">Drag and drop files here, or <span class="text-indigo-300 underline underline-offset-2">browse files</span></p>
+            <p class="text-xs text-slate-300 mt-1">Automatic 1MB chunking, SHA-256 validation, and $W = \lfloor R/2 \rfloor + 1$ quorum consensus (Max: 50MB)</p>
           </div>
         </div>
 
-        <!-- Upload Progress Area -->
-        <div id="upload-progress-container" class="mt-6 max-w-md mx-auto hidden text-left">
+        <!-- Upload Progress Area with ARIA Live Region -->
+        <div id="upload-progress-container" class="mt-6 max-w-md mx-auto hidden text-left" aria-live="polite" role="status">
           <div class="flex justify-between text-xs mb-1">
-            <span id="upload-filename" class="font-medium text-indigo-300 truncate max-w-xs">Uploading...</span>
-            <span id="upload-pct" class="text-slate-400 font-mono">0%</span>
+            <span id="upload-filename" class="font-semibold text-indigo-200 truncate max-w-xs">Uploading...</span>
+            <span id="upload-pct" class="text-slate-200 font-mono font-bold">0%</span>
           </div>
-          <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+          <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="upload-progressbar-role">
             <div id="upload-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-200" style="width: 0%"></div>
           </div>
-          <p id="upload-status-text" class="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
-            <i class="fa-solid fa-circle-notch fa-spin text-indigo-400"></i>
+          <p id="upload-status-text" class="text-xs text-slate-300 mt-2 flex items-center gap-1.5 font-medium">
+            <i class="fa-solid fa-circle-notch fa-spin text-indigo-400" aria-hidden="true"></i>
             <span>Distributing chunks across storage daemons...</span>
           </p>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- Objects List Section -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+    <section aria-labelledby="stored-objects-heading" class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
       <div class="px-6 py-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-          <h2 class="text-base font-semibold text-white">Stored Objects</h2>
-          <span id="files-badge-count" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-mono">0 items</span>
+          <h2 id="stored-objects-heading" class="text-base font-bold text-white">Stored Objects</h2>
+          <span id="files-badge-count" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-200 border border-slate-700 font-mono font-semibold" aria-label="Total items count">0 items</span>
         </div>
         <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
-          <input type="text" id="file-search-input" oninput="filterFiles()" placeholder="Search objects..." class="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-4 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition w-full sm:w-64">
+          <label for="file-search-input" class="sr-only">Search stored objects by name or ID</label>
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400" aria-hidden="true"></i>
+          <input type="text" id="file-search-input" oninput="filterFiles()" placeholder="Search objects..." class="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-4 py-1.5 text-xs text-slate-100 placeholder-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 transition w-full sm:w-64">
         </div>
       </div>
 
       <!-- File Table -->
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-xs">
+        <table class="w-full text-left border-collapse text-xs" aria-label="Stored distributed objects">
           <thead>
-            <tr class="border-b border-slate-800/80 bg-slate-950/50 text-slate-400 font-semibold tracking-wider uppercase text-[11px]">
-              <th class="py-3.5 px-6">Name</th>
-              <th class="py-3.5 px-4">Version</th>
-              <th class="py-3.5 px-4">Size</th>
-              <th class="py-3.5 px-4">ETag (OCC)</th>
-              <th class="py-3.5 px-4">Last Modified</th>
-              <th class="py-3.5 px-4">Status</th>
-              <th class="py-3.5 px-6 text-right">Actions</th>
+            <tr class="border-b border-slate-800 bg-slate-950/70 text-slate-300 font-bold tracking-wider uppercase text-[11px]">
+              <th scope="col" class="py-3.5 px-6">Name</th>
+              <th scope="col" class="py-3.5 px-4">Version</th>
+              <th scope="col" class="py-3.5 px-4">Size</th>
+              <th scope="col" class="py-3.5 px-4">ETag (OCC)</th>
+              <th scope="col" class="py-3.5 px-4">Last Modified</th>
+              <th scope="col" class="py-3.5 px-4">Status</th>
+              <th scope="col" class="py-3.5 px-6 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody id="files-table-body" class="divide-y divide-slate-800/50 text-slate-300">
+          <tbody id="files-table-body" class="divide-y divide-slate-800/60 text-slate-200">
             <tr>
-              <td colspan="7" class="py-12 text-center text-slate-500">
-                <i class="fa-solid fa-box-open text-3xl mb-3 text-slate-600 block"></i>
-                <span>No objects stored in cluster yet. Upload a file above to begin.</span>
+              <td colspan="7" class="py-12 text-center text-slate-300">
+                <i class="fa-solid fa-box-open text-3xl mb-3 text-slate-500 block" aria-hidden="true"></i>
+                <span class="text-sm font-medium">No objects stored in cluster yet. Upload a file above to begin.</span>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   </main>
 
-  <!-- Object Inspector Modal -->
-  <div id="inspector-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+  <!-- Object Inspector Modal (Accessible Dialog) -->
+  <div id="inspector-modal" role="dialog" aria-modal="true" aria-labelledby="modal-filename" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
       
       <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-850">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center" aria-hidden="true">
             <i class="fa-solid fa-microchip"></i>
           </div>
           <div>
-            <h3 class="font-bold text-white text-sm" id="modal-filename">Object Inspector</h3>
-            <p class="text-xs text-slate-400" id="modal-fileid">ID: ...</p>
+            <h2 class="font-bold text-white text-sm" id="modal-filename">Object Inspector</h2>
+            <p class="text-xs text-slate-300 font-mono" id="modal-fileid">ID: ...</p>
           </div>
         </div>
-        <button onclick="closeInspectorModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center transition">
-          <i class="fa-solid fa-xmark text-sm"></i>
+        <button type="button" onclick="closeInspectorModal()" id="modal-close-btn" aria-label="Close object inspector dialog" class="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 flex items-center justify-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+          <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -188,25 +196,25 @@
         
         <!-- Summary Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-            <div class="text-slate-500 text-[10px] uppercase font-bold">Version</div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-[10px] uppercase font-bold">Version</div>
             <div class="text-sm font-semibold text-indigo-300 mt-1" id="modal-version">v1</div>
           </div>
-          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-            <div class="text-slate-500 text-[10px] uppercase font-bold">Total Size</div>
-            <div class="text-sm font-semibold text-slate-200 mt-1" id="modal-size">0 B</div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-[10px] uppercase font-bold">Total Size</div>
+            <div class="text-sm font-semibold text-slate-100 mt-1" id="modal-size">0 B</div>
           </div>
-          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 col-span-2">
-            <div class="text-slate-500 text-[10px] uppercase font-bold">ETag (MD5)</div>
-            <div class="text-xs font-mono text-emerald-400 mt-1 truncate" id="modal-etag">-</div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 col-span-2">
+            <div class="text-slate-400 text-[10px] uppercase font-bold">ETag (MD5)</div>
+            <div class="text-xs font-mono text-emerald-300 mt-1 truncate" id="modal-etag">-</div>
           </div>
         </div>
 
         <!-- Chunks & Replicas Map -->
         <div>
           <div class="flex items-center justify-between mb-3">
-            <h4 class="font-semibold text-white uppercase text-[11px] tracking-wider">Distributed Chunk Map & Node Replicas</h4>
-            <span class="text-slate-400" id="modal-chunks-count">0 Chunks</span>
+            <h3 class="font-bold text-white uppercase text-[11px] tracking-wider">Distributed Chunk Map & Node Replicas</h3>
+            <span class="text-slate-300 font-semibold" id="modal-chunks-count">0 Chunks</span>
           </div>
 
           <div id="modal-chunks-container" class="space-y-3">
@@ -216,32 +224,33 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-3 border-t border-slate-800 bg-slate-950/50 flex justify-end gap-3">
-        <button onclick="closeInspectorModal()" class="px-4 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
-          Close
+      <div class="px-6 py-3 border-t border-slate-800 bg-slate-950 flex justify-end gap-3">
+        <button type="button" onclick="closeInspectorModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+          Close Inspector
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Toast Notification Container -->
-  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+  <!-- Accessible Toast Notification Container with ARIA live region -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none" aria-live="assertive" role="alert"></div>
 
   <script>
     let filesList = [];
+    let lastActiveElement = null;
 
-    // Notifications
+    // Accessible Notifications
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
       const colors = {
-        info: 'bg-indigo-900/90 border-indigo-500 text-indigo-100',
-        success: 'bg-emerald-900/90 border-emerald-500 text-emerald-100',
-        error: 'bg-rose-900/90 border-rose-500 text-rose-100',
-        warning: 'bg-amber-900/90 border-amber-500 text-amber-100'
+        info: 'bg-indigo-950 border-indigo-500 text-indigo-100',
+        success: 'bg-emerald-950 border-emerald-500 text-emerald-100',
+        error: 'bg-rose-950 border-rose-500 text-rose-100',
+        warning: 'bg-amber-950 border-amber-500 text-amber-100'
       };
-      toast.className = `px-4 py-3 rounded-xl border shadow-xl text-xs flex items-center gap-2 pointer-events-auto transition duration-300 ${colors[type] || colors.info}`;
-      toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
+      toast.className = `px-4 py-3 rounded-xl border shadow-2xl text-xs flex items-center gap-2 pointer-events-auto transition duration-300 ${colors[type] || colors.info}`;
+      toast.innerHTML = `<i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>${message}</span>`;
       container.appendChild(toast);
       setTimeout(() => {
         toast.style.opacity = '0';
@@ -251,7 +260,7 @@
 
     // Formatters
     function formatBytes(bytes) {
-      if (bytes === 0) return '0 B';
+      if (!bytes || bytes === 0) return '0 B';
       const k = 1024;
       const sizes = ['B', 'KB', 'MB', 'GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -306,9 +315,9 @@
       if (files.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" class="py-12 text-center text-slate-500">
-              <i class="fa-solid fa-box-open text-3xl mb-3 text-slate-600 block"></i>
-              <span>No objects stored in cluster yet. Upload a file above to begin.</span>
+            <td colspan="7" class="py-12 text-center text-slate-300">
+              <i class="fa-solid fa-box-open text-3xl mb-3 text-slate-500 block" aria-hidden="true"></i>
+              <span class="text-sm font-medium">No objects stored in cluster yet. Upload a file above to begin.</span>
             </td>
           </tr>
         `;
@@ -316,37 +325,37 @@
       }
 
       tbody.innerHTML = files.map(f => `
-        <tr class="hover:bg-slate-850/60 transition group">
-          <td class="py-3.5 px-6 font-medium text-white flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
+        <tr class="hover:bg-slate-850 transition">
+          <td class="py-3.5 px-6 font-semibold text-white flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center" aria-hidden="true">
               <i class="fa-regular fa-file"></i>
             </div>
             <span class="truncate max-w-[200px] sm:max-w-xs font-semibold">${f.filename}</span>
           </td>
           <td class="py-3.5 px-4 font-mono">
-            <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-medium">v${f.version}</span>
+            <span class="px-2 py-0.5 rounded-full bg-indigo-500/25 text-indigo-200 font-semibold border border-indigo-500/30">v${f.version}</span>
           </td>
-          <td class="py-3.5 px-4 font-mono text-slate-400">${formatBytes(f.size_bytes)}</td>
-          <td class="py-3.5 px-4 font-mono text-slate-400 truncate max-w-[120px]" title="${f.etag}">
+          <td class="py-3.5 px-4 font-mono text-slate-200 font-medium">${formatBytes(f.size_bytes)}</td>
+          <td class="py-3.5 px-4 font-mono text-slate-300 truncate max-w-[120px]" title="${f.etag}">
             "${f.etag ? f.etag.substring(0, 10) + '...' : '-'}"
           </td>
-          <td class="py-3.5 px-4 text-slate-400">${formatDate(f.created_at)}</td>
+          <td class="py-3.5 px-4 text-slate-300">${formatDate(f.created_at)}</td>
           <td class="py-3.5 px-4">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-              f.status === 'AVAILABLE' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
-              f.status === 'HEALING' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
-              'bg-slate-700 text-slate-400'
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${
+              f.status === 'AVAILABLE' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
+              f.status === 'HEALING' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
+              'bg-slate-800 text-slate-300 border border-slate-700'
             }">${f.status}</span>
           </td>
           <td class="py-3.5 px-6 text-right space-x-1 whitespace-nowrap">
-            <button onclick="inspectFile('${f.file_id}')" title="Inspect Chunks & Replicas" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition">
-              <i class="fa-solid fa-circle-nodes"></i>
+            <button type="button" onclick="inspectFile('${f.file_id}')" aria-label="Inspect chunk distribution for ${f.filename}" title="Inspect Chunks & Replicas" class="p-2 rounded-lg text-slate-300 hover:text-indigo-300 hover:bg-slate-800 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+              <i class="fa-solid fa-circle-nodes text-sm" aria-hidden="true"></i>
             </button>
-            <a href="/api/files/${f.file_id}/download" download="${f.filename}" title="Download Object" class="inline-block p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition">
-              <i class="fa-solid fa-download"></i>
+            <a href="/api/files/${f.file_id}/download" download="${f.filename}" aria-label="Download object ${f.filename}" title="Download Object" class="inline-block p-2 rounded-lg text-slate-300 hover:text-emerald-300 hover:bg-slate-800 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
+              <i class="fa-solid fa-download text-sm" aria-hidden="true"></i>
             </a>
-            <button onclick="deleteFile('${f.file_id}', '${f.filename}')" title="Delete Object" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition">
-              <i class="fa-regular fa-trash-can"></i>
+            <button type="button" onclick="deleteFile('${f.file_id}', '${f.filename}')" aria-label="Delete object ${f.filename}" title="Delete Object" class="p-2 rounded-lg text-slate-300 hover:text-rose-300 hover:bg-slate-800 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400">
+              <i class="fa-regular fa-trash-can text-sm" aria-hidden="true"></i>
             </button>
           </td>
         </tr>
@@ -359,8 +368,9 @@
       renderFilesTable(filtered);
     }
 
-    // Inspect Modal
+    // Accessible Modal Dialog
     async function inspectFile(fileId) {
+      lastActiveElement = document.activeElement;
       try {
         const resp = await fetch(`/api/files/${fileId}/inspect`);
         if (!resp.ok) throw new Error('Failed to load file details');
@@ -375,38 +385,40 @@
 
         const container = document.getElementById('modal-chunks-container');
         container.innerHTML = data.chunks.map(chunk => `
-          <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3.5 space-y-2">
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="w-5 h-5 rounded bg-indigo-500/20 text-indigo-400 font-mono font-bold flex items-center justify-center text-[10px]">#${chunk.chunk_index}</span>
-                <span class="font-mono text-slate-300 font-semibold">${chunk.chunk_id}</span>
+                <span class="w-5 h-5 rounded bg-indigo-500/25 text-indigo-300 font-mono font-bold flex items-center justify-center text-[10px]" aria-hidden="true">#${chunk.chunk_index}</span>
+                <span class="font-mono text-slate-200 font-semibold">${chunk.chunk_id}</span>
               </div>
-              <span class="font-mono text-slate-400">${formatBytes(chunk.size_bytes)}</span>
+              <span class="font-mono text-slate-300 font-semibold">${formatBytes(chunk.size_bytes)}</span>
             </div>
-            <div class="font-mono text-[10px] text-slate-500 break-all">
-              SHA-256: <span class="text-slate-400">${chunk.checksum_sha256}</span>
+            <div class="font-mono text-[11px] text-slate-400 break-all">
+              SHA-256: <span class="text-slate-300 font-semibold">${chunk.checksum_sha256}</span>
             </div>
             
             <div class="pt-2 border-t border-slate-900 flex flex-wrap items-center gap-2">
-              <span class="text-[10px] text-slate-400 uppercase font-semibold">Replicas:</span>
+              <span class="text-[10px] text-slate-300 uppercase font-bold">Replicas:</span>
               ${chunk.replicas.map(rep => `
                 <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-mono ${
                   rep.status === 'HEALTHY' && rep.node_status === 'ONLINE'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200'
                     : rep.status === 'CORRUPTED'
-                    ? 'bg-rose-500/15 border-rose-500/40 text-rose-300'
-                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                    ? 'bg-rose-950/80 border-rose-500/50 text-rose-200'
+                    : 'bg-amber-950/80 border-amber-500/50 text-amber-200'
                 }">
-                  <span class="w-2 h-2 rounded-full ${rep.node_status === 'ONLINE' ? 'bg-emerald-400' : 'bg-rose-500'}"></span>
+                  <span class="w-2 h-2 rounded-full ${rep.node_status === 'ONLINE' ? 'bg-emerald-400' : 'bg-rose-400'}" aria-hidden="true"></span>
                   <span>Node ${rep.node_id} (Port ${rep.port || '?'})</span>
-                  <span class="font-bold text-[9px] uppercase px-1 rounded bg-black/30">${rep.status}</span>
+                  <span class="font-bold text-[10px] uppercase px-1 rounded bg-black/40">${rep.status}</span>
                 </div>
               `).join('')}
             </div>
           </div>
         `).join('');
 
-        document.getElementById('inspector-modal').classList.remove('hidden');
+        const modal = document.getElementById('inspector-modal');
+        modal.classList.remove('hidden');
+        document.getElementById('modal-close-btn').focus();
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -414,7 +426,20 @@
 
     function closeInspectorModal() {
       document.getElementById('inspector-modal').classList.add('hidden');
+      if (lastActiveElement) {
+        lastActiveElement.focus();
+      }
     }
+
+    // Keyboard support: Close modal on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('inspector-modal');
+        if (!modal.classList.contains('hidden')) {
+          closeInspectorModal();
+        }
+      }
+    });
 
     async function deleteFile(fileId, filename) {
       if (!confirm(`Are you sure you want to delete '${filename}'?`)) return;
@@ -432,6 +457,13 @@
     async function handleFileSelected(files) {
       if (!files || files.length === 0) return;
       const file = files[0];
+
+      // Client-side payload limit check (50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        showToast("File exceeds the maximum 50 MB upload limit.", "error");
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
@@ -440,12 +472,14 @@
       const pctText = document.getElementById('upload-pct');
       const filenameText = document.getElementById('upload-filename');
       const statusText = document.getElementById('upload-status-text');
+      const roleBar = document.getElementById('upload-progressbar-role');
 
       progressContainer.classList.remove('hidden');
       filenameText.innerText = file.name;
       progressBar.style.width = '20%';
       pctText.innerText = '20%';
-      statusText.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-indigo-400"></i> Chunking and distributing across quorum nodes...';
+      roleBar.setAttribute('aria-valuenow', '20');
+      statusText.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-indigo-400" aria-hidden="true"></i> Chunking and distributing across quorum nodes...';
 
       try {
         const xhr = new XMLHttpRequest();
@@ -456,6 +490,7 @@
             const pct = Math.round((e.loaded / e.total) * 90);
             progressBar.style.width = `${pct}%`;
             pctText.innerText = `${pct}%`;
+            roleBar.setAttribute('aria-valuenow', pct.toString());
           }
         };
 
@@ -463,7 +498,8 @@
           if (xhr.status >= 200 && xhr.status < 300) {
             progressBar.style.width = '100%';
             pctText.innerText = '100%';
-            statusText.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Quorum write acknowledged!';
+            roleBar.setAttribute('aria-valuenow', '100');
+            statusText.innerHTML = '<i class="fa-solid fa-check text-emerald-400" aria-hidden="true"></i> Quorum write acknowledged!';
             showToast(`'${file.name}' stored with Quorum consensus!`, 'success');
             setTimeout(() => {
               progressContainer.classList.add('hidden');
@@ -489,18 +525,25 @@
       }
     }
 
-    // Drag and drop listeners
+    // Drag and drop listeners & Keyboard activator
     const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        document.getElementById('file-upload-input').click();
+      }
+    });
+
     ['dragenter', 'dragover'].forEach(eventName => {
       dropZone.addEventListener(eventName, (e) => {
         e.preventDefault();
-        dropZone.classList.add('border-indigo-500', 'bg-indigo-950/20');
+        dropZone.classList.add('border-indigo-400', 'bg-indigo-950/30');
       }, false);
     });
     ['dragleave', 'drop'].forEach(eventName => {
       dropZone.addEventListener(eventName, (e) => {
         e.preventDefault();
-        dropZone.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+        dropZone.classList.remove('border-indigo-400', 'bg-indigo-950/30');
       }, false);
     });
     dropZone.addEventListener('drop', (e) => {
@@ -514,7 +557,7 @@
 
     // Auto refresh
     refreshFileList();
-    setInterval(updateHeaderTelemetry, 3000);
+    setInterval(updateHeaderTelemetry, 4000);
   </script>
 </body>
 </html>

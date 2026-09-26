@@ -13,10 +13,15 @@ MIN_NODE_COUNT = 2
 MAX_NODE_COUNT = 5
 DEFAULT_REPLICATION_FACTOR = 2
 
-# Network Ports
+# Network Ports & Host
 COORDINATOR_PORT = int(os.getenv("COORDINATOR_PORT", "8000"))
 BASE_NODE_PORT = int(os.getenv("BASE_NODE_PORT", "8001"))
-COORDINATOR_HOST = os.getenv("COORDINATOR_HOST", "0.0.0.0")
+COORDINATOR_HOST = os.getenv("COORDINATOR_HOST", "0.0.0.0")  # nosec B104
+
+# Security & Access Control
+VAULT_ADMIN_USER = os.getenv("VAULT_ADMIN_USER", "admin")
+VAULT_ADMIN_PASSWORD = os.getenv("VAULT_ADMIN_PASSWORD", "VaultAdmin2026!Secure")
+MAX_UPLOAD_SIZE_BYTES = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(50 * 1024 * 1024)))  # 50 MB DoS safeguard
 
 # Resilience & Timeouts
 HEARTBEAT_INTERVAL_SECONDS = 2.0

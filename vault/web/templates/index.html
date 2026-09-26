@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Vault Distributed Object Storage Navigation Hub - Access the Client Storage Portal and the Admin & Chaos Engineering Console.">
+  <title>Vault - Distributed Object Storage Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+            slate: { 850: '#141d2e', 950: '#070b14' }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Accessible Skip to Main Content Link -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:font-semibold focus:rounded-lg focus:shadow-2xl focus:outline-none focus:ring-2 focus:ring-white">
+    Skip to main content
+  </a>
+
+  <!-- Header -->
+  <header role="banner" class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25" aria-hidden="true">
+          <i class="fa-solid fa-cube text-white text-lg"></i>
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight text-white">Vault</span>
+          <span class="ml-2 text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-semibold">Model A Architecture</span>
+        </div>
+      </div>
+
+      <!-- Quick Cluster Status Indicator with ARIA live region -->
+      <div class="flex items-center gap-3" aria-live="polite" role="status">
+        <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-xs font-medium text-slate-200">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true"></span>
+          <span>Cluster Status: <strong id="cluster-status-text" class="text-emerald-400 font-bold">ONLINE</strong></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content" role="main" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col justify-center">
+    
+    <!-- Hero Introduction -->
+    <div class="text-center max-w-3xl mx-auto mb-12">
+      <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+        Resilient Distributed <span class="bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">Object Storage</span>
+      </h1>
+      <p class="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed">
+        Vault guarantees high availability, quorum consensus, and silent bit-rot self-healing across multi-node topologies. Choose a portal below to begin.
+      </p>
+    </div>
+
+    <!-- Navigation Hub Cards (Semantic Navigation) -->
+    <nav aria-label="Vault Portals" class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto w-full">
+      
+      <!-- Card 1: Client Storage Portal -->
+      <section aria-labelledby="client-portal-heading" class="relative group rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 p-8 shadow-2xl transition duration-300 hover:border-indigo-500/60 hover:shadow-indigo-500/10 flex flex-col justify-between">
+        <div>
+          <div class="w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center text-2xl mb-6 group-hover:scale-105 transition" aria-hidden="true">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+          </div>
+          <h2 id="client-portal-heading" class="text-xl font-bold text-white mb-2">
+            Client Storage Portal
+          </h2>
+          <p class="text-sm text-slate-300 leading-relaxed mb-6">
+            Google Drive / S3 style cloud portal for single-user storage. Upload files with automatic chunking, stream downloads with quorum verification, inspect replica maps, and manage object versions.
+          </p>
+          <ul class="text-xs text-slate-300 space-y-2 mb-6" aria-label="Client Portal Features">
+            <li class="flex items-center gap-2">
+              <i class="fa-solid fa-check text-emerald-400" aria-hidden="true"></i>
+              <span>Drag-and-Drop file uploads with real-time progress</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <i class="fa-solid fa-check text-emerald-400" aria-hidden="true"></i>
+              <span>Optimistic Concurrency Control (OCC) and ETag digests</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <i class="fa-solid fa-check text-emerald-400" aria-hidden="true"></i>
+              <span>Object Inspector with chunk breakdown & node health</span>
+            </li>
+          </ul>
+        </div>
+
+        <a href="/client" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:ring-indigo-400">
+          <span>Enter Client Portal</span>
+          <i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
+        </a>
+      </section>
+
+      <!-- Card 2: Admin Dashboard & Chaos Lab -->
+      <section aria-labelledby="admin-portal-heading" class="relative group rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 p-8 shadow-2xl transition duration-300 hover:border-rose-500/60 hover:shadow-rose-500/10 flex flex-col justify-between">
+        <div>
+          <div class="w-14 h-14 rounded-2xl bg-rose-600/20 border border-rose-500/40 text-rose-400 flex items-center justify-center text-2xl mb-6 group-hover:scale-105 transition" aria-hidden="true">
+            <i class="fa-solid fa-flask-vial"></i>
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <h2 id="admin-portal-heading" class="text-xl font-bold text-white">
+              Admin & Chaos Lab
+            </h2>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold uppercase tracking-wide">Protected</span>
+          </div>
+          <p class="text-sm text-slate-300 leading-relaxed mb-6">
+            Single-screen split console featuring live cluster telemetry, real-time node cards, auto-scrolling SSE logs, and interactive resilience test triggers.
+          </p>
+          <ul class="text-xs text-slate-300 space-y-2 mb-6" aria-label="Admin Console Features">
+            <li class="flex items-center gap-2">
+              <i class="fa-solid fa-check text-rose-400" aria-hidden="true"></i>
+              <span>Chaos Scenarios: Node Kill, Bit-Rot, Latency, and 10x Collisions</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <i class="fa-solid fa-check text-rose-400" aria-hidden="true"></i>
+              <span>Live streaming Server-Sent Events (SSE) telemetry feed</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <i class="fa-solid fa-check text-rose-400" aria-hidden="true"></i>
+              <span>Durability gauges, storage overhead, and on-demand scrub</span>
+            </li>
+          </ul>
+        </div>
+
+        <a href="/admin" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-sm shadow-lg shadow-rose-600/30 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:ring-rose-400">
+          <i class="fa-solid fa-shield-halved text-xs" aria-hidden="true"></i>
+          <span>Launch Admin Console</span>
+        </a>
+      </section>
+
+    </nav>
+  </main>
+
+  <!-- Footer -->
+  <footer role="contentinfo" class="border-t border-slate-800/80 bg-slate-900/60 py-6 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>Vault Distributed Object Storage System &copy; 2026. Built with Python, FastAPI, and CustomTkinter.</p>
+      <div class="flex items-center gap-4">
+        <a href="/client" class="text-slate-300 hover:text-white underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded">Client Portal</a>
+        <span class="text-slate-700" aria-hidden="true">&bull;</span>
+        <a href="/admin" class="text-slate-300 hover:text-white underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded">Admin & Chaos Lab</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Live telemetry status check
+    async function updateStatus() {
+      try {
+        const resp = await fetch('/api/telemetry');
+        if (resp.ok) {
+          const data = await resp.json();
+          const elem = document.getElementById('cluster-status-text');
+          if (data.online_nodes === 0) {
+            elem.innerText = 'OFFLINE';
+            elem.className = 'text-rose-400 font-bold';
+          } else if (data.online_nodes < data.total_nodes) {
+            elem.innerText = 'DEGRADED';
+            elem.className = 'text-amber-400 font-bold';
+          } else {
+            elem.innerText = 'HEALTHY';
+            elem.className = 'text-emerald-400 font-bold';
+          }
+        }
+      } catch (e) {}
+    }
+    updateStatus();
+    setInterval(updateStatus, 5000);
+  </script>
+</body>
+</html>
